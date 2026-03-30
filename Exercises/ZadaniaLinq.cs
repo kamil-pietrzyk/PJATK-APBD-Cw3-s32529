@@ -66,10 +66,19 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Zadanie04_PierwszyPrzedmiotAnalityczny()
     {
-        return DaneUczelni.Przedmioty
-            .Where(przedmiot => przedmiot.Kategoria == "Analytics")
-            .Take(1)
-            .Select(przedmiot => $"{przedmiot.Nazwa}, {przedmiot.DataStartu}");
+        // return DaneUczelni.Przedmioty
+        //     .Where(przedmiot => przedmiot.Kategoria == "Analytics")
+        //     .Take(1)
+        //     .Select(przedmiot => $"{przedmiot.Nazwa}, {przedmiot.DataStartu}");
+        var przedmiot = DaneUczelni.Przedmioty
+            .FirstOrDefault(p => p.Kategoria == "Analytics");
+        
+        if (przedmiot is null)
+        {
+            return ["Brak przedmiotu z kategorii Analytics."];
+        }
+        
+        return [$"{przedmiot.Nazwa}, {przedmiot.DataStartu}"];
     }
 
     /// <summary>
@@ -210,15 +219,24 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Zadanie12_ParyStudentPrzedmiot()
     {
-        return DaneUczelni.Zapisy
-            .Join(DaneUczelni.Studenci,
-                zapis => zapis.StudentId,
-                student => student.Id,
-                (zapis, student) => new { student.Imie, student.Nazwisko, zapis.PrzedmiotId })
-            .Join(DaneUczelni.Przedmioty,
-                v => v.PrzedmiotId,
-                przedmiot => przedmiot.Id,
-                (arg1, przedmiot) => $"{arg1.Imie}, {arg1.Nazwisko}, {przedmiot.Nazwa}");
+        // return DaneUczelni.Zapisy
+        //     .Join(DaneUczelni.Studenci,
+        //         zapis => zapis.StudentId,
+        //         student => student.Id,
+        //         (zapis, student) => new { student.Imie, student.Nazwisko, zapis.PrzedmiotId })
+        //     .Join(DaneUczelni.Przedmioty,
+        //         v => v.PrzedmiotId,
+        //         przedmiot => przedmiot.Id,
+        //         (arg1, przedmiot) => $"{arg1.Imie}, {arg1.Nazwisko}, {przedmiot.Nazwa}");
+        return DaneUczelni.Studenci
+            .SelectMany(
+                student => DaneUczelni.Zapisy.Where(zapis => zapis.StudentId == student.Id),
+                (student, zapis) => new { student.Imie, student.Nazwisko, zapis.PrzedmiotId }
+            )
+            .SelectMany(
+                tymczasowy => DaneUczelni.Przedmioty.Where(przedmiot => przedmiot.Id == tymczasowy.PrzedmiotId),
+                (tymczasowy, przedmiot) => $"{tymczasowy.Imie}, {tymczasowy.Nazwisko}, {przedmiot.Nazwa}"
+            );
     }
 
     /// <summary>

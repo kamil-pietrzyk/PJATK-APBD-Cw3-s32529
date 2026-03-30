@@ -234,7 +234,7 @@ public sealed class ZadaniaLinq
                 (student, zapis) => new { student.Imie, student.Nazwisko, zapis.PrzedmiotId }
             )
             .SelectMany(
-                tymczasowy => DaneUczelni.Przedmioty.Where(przedmiot => przedmiot.Id == tymczasowy.PrzedmiotId),
+                tymczasowy => DaneUczelni.Przedmioty.Where(przedmiot => przedmiot.Id == tymczasowy.PrzedmiotId),    // Tutaj - aby wyciągnąć dane z 1-elementowej kolekcji.
                 (tymczasowy, przedmiot) => $"{tymczasowy.Imie}, {tymczasowy.Nazwisko}, {przedmiot.Nazwa}"
             );
     }
@@ -297,16 +297,24 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Zadanie15_ProwadzacyILiczbaPrzedmiotow()
     {
+        // return DaneUczelni.Prowadzacy
+        //     .LeftJoin(DaneUczelni.Przedmioty,
+        //         prowadzacy => prowadzacy.Id,
+        //         przedmiot => przedmiot.ProwadzacyId,
+        //         (prowadzacy, przedmiot) => new { prowadzacy.Imie, prowadzacy.Nazwisko, PrzedmiotId = przedmiot?.Id })
+        //     .GroupBy(v => new { v.Imie, v.Nazwisko })
+        //     .Select(grupa => $"{grupa.Key.Imie}, " +
+        //                      $"{grupa.Key.Nazwisko}, " +
+        //                      $"{grupa.Count(v => v.PrzedmiotId is not null)}"
+        //                      );
         return DaneUczelni.Prowadzacy
-            .LeftJoin(DaneUczelni.Przedmioty,
-                prowadzacy => prowadzacy.Id,
-                przedmiot => przedmiot.ProwadzacyId,
-                (prowadzacy, przedmiot) => new { prowadzacy.Imie, prowadzacy.Nazwisko, PrzedmiotId = przedmiot?.Id })
-            .GroupBy(v => new { v.Imie, v.Nazwisko })
-            .Select(grupa => $"{grupa.Key.Imie}, " +
-                             $"{grupa.Key.Nazwisko}, " +
-                             $"{grupa.Count(v => v.PrzedmiotId is not null)}"
-                             );
+            .Select(pr => new 
+            {
+                pr.Imie, 
+                pr.Nazwisko,
+                LiczbaPrzedmiotow = DaneUczelni.Przedmioty.Count(p => p.ProwadzacyId == pr.Id)
+            })
+            .Select(x => $"{x.Imie}, {x.Nazwisko}, {x.LiczbaPrzedmiotow}");
     }
 
     /// <summary>
@@ -399,23 +407,35 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie03_ProwadzacyISredniaOcenNaIchPrzedmiotach()
     {
+        // return DaneUczelni.Prowadzacy
+        //     .LeftJoin(DaneUczelni.Przedmioty,
+        //         pr => pr.Id,
+        //         p => p.ProwadzacyId,
+        //         (pr, p) => new { pr.Imie, pr.Nazwisko, PrzedmiotId = p?.Id })
+        //     .LeftJoin(DaneUczelni.Zapisy,
+        //         x => x.PrzedmiotId,
+        //         z => z.PrzedmiotId,
+        //         (x, z) => new { x.Imie, x.Nazwisko, z?.OcenaKoncowa })
+        //     .GroupBy(x => new { x.Imie, x.Nazwisko })
+        //     .Select(grupa =>
+        //     {
+        //         var oceny = grupa
+        //             .Where(v => v.OcenaKoncowa is not null)
+        //             .Select(v => v.OcenaKoncowa.Value).ToList();
+        //         string sredniaTekst = oceny.Any() ? oceny.Average().ToString("F2") : "NULL";
+        //         return $"{grupa.Key.Imie}, {grupa.Key.Nazwisko}, {sredniaTekst}";
+        //     });
         return DaneUczelni.Prowadzacy
-            .LeftJoin(DaneUczelni.Przedmioty,
-                pr => pr.Id,
-                p => p.ProwadzacyId,
-                (pr, p) => new { pr.Imie, pr.Nazwisko, PrzedmiotId = p?.Id })
-            .LeftJoin(DaneUczelni.Zapisy,
-                x => x.PrzedmiotId,
-                z => z.PrzedmiotId,
-                (x, z) => new { x.Imie, x.Nazwisko, z?.OcenaKoncowa })
-            .GroupBy(x => new { x.Imie, x.Nazwisko })
-            .Select(grupa =>
+            .Select(pr =>
             {
-                var oceny = grupa
-                    .Where(v => v.OcenaKoncowa is not null)
-                    .Select(v => v.OcenaKoncowa.Value).ToList();
+                var oceny = DaneUczelni.Przedmioty
+                    .Where(p => p.ProwadzacyId == pr.Id)    // Jakiś prowadzący może nie mieć przedmiotu...
+                    .SelectMany(p => DaneUczelni.Zapisy.Where(z => z.PrzedmiotId == p.Id))  // Jakiś przedmiot może nie mieć zapisów
+                    .Where(z => z.OcenaKoncowa is not null)
+                    .Select(z => z.OcenaKoncowa.Value)
+                    .ToList();
                 string sredniaTekst = oceny.Any() ? oceny.Average().ToString("F2") : "NULL";
-                return $"{grupa.Key.Imie}, {grupa.Key.Nazwisko}, {sredniaTekst}";
+                return $"{pr.Imie}, {pr.Nazwisko}, {sredniaTekst}";
             });
     }
 
